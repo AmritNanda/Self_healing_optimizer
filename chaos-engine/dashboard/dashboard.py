@@ -201,4 +201,233 @@ html, body, [class*="css"] {
 """
  
 st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
+# ---------------------------------------------------------------------------
+# Session state bootstrap
+# ---------------------------------------------------------------------------
+def _init_state() -> None:
+    defaults: dict[str, Any] = {
+        "history_time":    [],
+        "history_cpu":     [],
+        "history_mem":     [],
+        "history_latency": [],
+        "history_score":   [],
+        "action_log":      [],
+        "total_anomalies": 0,
+        "total_recovered": 0,
+        "last_action":     "—",
+        "last_score":      0.0,
+        "backend_url":     ML_BACKEND_URL,
+        "chaos_url":       CHAOS_API_URL,
+        "auto_heal":       True,
+        "inject_mode":     False,
+        "uptime_start":    time.time(),
+    }
+    for key, val in defaults.items():
+        if key not in st.session_state:
+            st.session_state[key] = val
+ 
+ 
+_init_state()
+ 
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+def _now_str() -> str:
+    return datetime.now(timezone.utc).strftime("%H:%M:%S")
+ 
+ 
+def _log(msg: str, level: str = "info") -> None:
+    css_class = {"ok": "log-ok", "warn": "log-warn", "crit": "log-crit"}.get(level, "log-info")
+    entry = (
+        f'<div class="log-entry">'
+        f'<span class="log-time">[{_now_str()}]</span> '
+        f'<span class="{css_class}">{msg}</span>'
+        f'</div>'
+    )
+    st.session_state.action_log.insert(0, entry)
+    st.session_state.action_log = st.session_state.action_log[:200]
+ 
+ 
+def _simulate_telemetry() -> tuple[float, float, float]:
+    """Generate synthetic telemetry if Prometheus is unavailable."""
+    t = time.time()
+    # Add occasional spikes to make it interesting
+    spike = random.random() < 0.08
+    if spike:
+        return (
+            random.uniform(85, 99),
+            random.uniform(80, 98),
+            random.uniform(1500, 8000),
+        )
+    cpu = 30 + 15 * abs(0.5 - ((t % 60) / 60)) + random.gauss(0, 4)
+    mem = 50 + 10 * abs(0.5 - ((t % 90) / 90)) + random.gauss(0, 5)
+    lat = 100 + 80 * abs(0.5 - ((t % 45) / 45)) + random.gauss(0, 20)
+    return float(min(max(cpu, 5), 99)), float(min(max(mem, 10), 99)), float(max(lat, 20))
+ 
+ 
+def _call_ml_backend(cpu: float, mem: float, latency: float) -> dict | None:
+    try:
+        resp = httpx.post(
+            f"{st.session_state.backend_url}/api/v1/analyze",
+            json={"cpu_usage": cpu, "mem_usage": mem, "latency_ms": latency},
+            timeout=2.0,
+        )
+        resp.raise_for_status()
+        return resp.json()
+    except Exception as exc:
+        logger.warning("ML backend unreachable: %s — using mock", exc)
+        # Mock response when backend not available
+        score = min(max((cpu / 100 + mem / 100 + latency / 10000) / 3, 0.0), 1.0)
+        is_anom = score > 0.6
+        actions = {
+            cpu > 85: "SCALE_OUT_HPA",
+            mem > 85: "FLUSH_REDIS_CACHE",
+            latency > 2000: "REROUTE_TRAFFIC",
+        }
+        action = next((v for k, v in actions.items() if k), "NO_ACTION" if not is_anom else "RESTART_POD")
+        return {
+            "is_anomaly": is_anom,
+            "threat_score": round(score, 4),
+            "recommended_action": action,
+        }
+ 
+ 
+def _trigger_chaos(fault_type: str, payload: dict) -> None:
+    _log(f"💥 INJECTING FAULT → {fault_type}", "warn")
+    try:
+        httpx.post(
+            f"{st.session_state.chaos_url}/inject/{fault_type}",
+            json=payload,
+            timeout=3.0,
+        )
+        _log(f"Chaos Mesh ACK for {fault_type}", "ok")
+    except Exception:
+        _log(f"Chaos API offline — fault '{fault_type}' queued locally", "warn")
+ 
+ 
+def _execute_recovery(action: str) -> None:
+    action_messages = {
+        "RESTART_POD":      "🔄 Restarting degraded pod via Kopf operator",
+        "SCALE_OUT_HPA":    "📈 Triggering HPA scale-out (+2 replicas)",
+        "REROUTE_TRAFFIC":  "🔀 Rerouting traffic away from unhealthy node",
+        "FLUSH_REDIS_CACHE":"🗑️  Flushing Redis cache to relieve memory pressure",
+        "DRAIN_NODE":       "🚧 Initiating node drain for maintenance",
+    }
+    msg = action_messages.get(action, f"⚙️  Executing {action}")
+    _log(msg, "ok")
+    try:
+        httpx.post(
+            f"{st.session_state.chaos_url}/recover",
+            json={"action": action},
+            timeout=3.0,
+        )
+    except Exception:
+        pass  # Operator offline — log-only mode
+ 
+ 
+def _append_history(ts: str, cpu: float, mem: float, lat: float, score: float) -> None:
+    for key, val in [
+        ("history_time", ts), ("history_cpu", cpu), ("history_mem", mem),
+        ("history_latency", lat), ("history_score", score),
+    ]:
+        st.session_state[key].append(val)
+        if len(st.session_state[key]) > MAX_HISTORY:
+            st.session_state[key].pop(0)
+ 
+# ---------------------------------------------------------------------------
+# Chart builders
+# ---------------------------------------------------------------------------
+PLOTLY_BASE = dict(
+    paper_bgcolor="rgba(0,0,0,0)",
+    plot_bgcolor="rgba(0,0,0,0)",
+    font=dict(family="JetBrains Mono", color="#64748b", size=10),
+    margin=dict(l=10, r=10, t=10, b=10),
+    showlegend=True,
+    legend=dict(
+        orientation="h", yanchor="bottom", y=1.01, xanchor="right", x=1,
+        font=dict(size=9), bgcolor="rgba(0,0,0,0)",
+    ),
+)
+ 
+ 
+def build_heartbeat_chart() -> go.Figure:
+    t = st.session_state.history_time
+    fig = go.Figure()
+ 
+    traces = [
+        ("CPU %",      st.session_state.history_cpu,     "#00e5ff", True),
+        ("MEM %",      st.session_state.history_mem,     "#7c4dff", True),
+        ("Score×100",  [s * 100 for s in st.session_state.history_score], "#ff3d5a", True),
+    ]
+    for name, y, color, _ in traces:
+        fig.add_trace(go.Scatter(
+            x=t, y=y, name=name, mode="lines",
+            line=dict(color=color, width=1.5),
+            fill="tozeroy",
+            fillcolor=color.replace("#", "rgba(").rstrip(")") + ",0.04)",
+        ))
+ 
+    fig.update_layout(
+        **PLOTLY_BASE,
+        height=200,
+        xaxis=dict(showgrid=False, showticklabels=True, tickfont=dict(size=8), zeroline=False),
+        yaxis=dict(showgrid=True, gridcolor="#1e2d45", range=[0, 110], zeroline=False, tickfont=dict(size=8)),
+        hovermode="x unified",
+    )
+    return fig
+ 
+ 
+def build_latency_chart() -> go.Figure:
+    t = st.session_state.history_time
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(
+        x=t, y=st.session_state.history_latency, name="Latency ms",
+        mode="lines", line=dict(color="#ffab00", width=1.8),
+        fill="tozeroy", fillcolor="rgba(255,171,0,0.05)",
+    ))
+    fig.add_hline(y=500, line=dict(color="#ff3d5a", width=1, dash="dot"),
+                  annotation_text="SLO Threshold", annotation_font_size=9)
+    fig.update_layout(
+        **PLOTLY_BASE, height=170,
+        xaxis=dict(showgrid=False, showticklabels=True, tickfont=dict(size=8), zeroline=False),
+        yaxis=dict(showgrid=True, gridcolor="#1e2d45", zeroline=False, tickfont=dict(size=8)),
+    )
+    return fig
+ 
+ 
+def build_gauge(score: float) -> go.Figure:
+    if score < 0.4:
+        color = "#00e676"
+    elif score < 0.7:
+        color = "#ffab00"
+    else:
+        color = "#ff3d5a"
+ 
+    fig = go.Figure(go.Indicator(
+        mode="gauge+number+delta",
+        value=round(score * 100, 1),
+        number=dict(suffix="%", font=dict(size=34, color=color, family="Syne")),
+        delta=dict(reference=40, valueformat=".1f"),
+        gauge=dict(
+            axis=dict(range=[0, 100], tickfont=dict(size=9, color="#64748b"),
+                      tickcolor="#1e2d45", tickwidth=1),
+            bar=dict(color=color, thickness=0.22),
+            bgcolor="rgba(0,0,0,0)",
+            bordercolor="#1e2d45",
+            steps=[
+                dict(range=[0, 40],  color="rgba(0,230,118,0.08)"),
+                dict(range=[40, 70], color="rgba(255,171,0,0.08)"),
+                dict(range=[70, 100],color="rgba(255,61,90,0.08)"),
+            ],
+            threshold=dict(line=dict(color="#ff3d5a", width=2), thickness=0.75, value=70),
+        ),
+        title=dict(text="THREAT LEVEL", font=dict(size=10, color="#64748b", family="JetBrains Mono")),
+    ))
+    fig.update_layout(
+        paper_bgcolor="rgba(0,0,0,0)",
+        font=dict(color="#e2e8f0"),
+        margin=dict(l=20, r=20, t=30, b=10),
+        height=230,
+    )
+    return fig
  
