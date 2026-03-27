@@ -1,0 +1,59 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: self-healer
+  namespace: default
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: self-healer-role
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "pods/status"]
+    verbs: ["get", "list", "watch", "delete"]
+  - apiGroups: ["apps"]
+    resources: ["deployments", "deployments/scale"]
+    verbs: ["get", "list", "watch", "patch", "update"]
+  - apiGroups: ["events.k8s.io", ""]
+    resources: ["events"]
+    verbs: ["create", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: self-healer-binding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: self-healer-role
+subjects:
+  - kind: ServiceAccount
+    name: self-healer
+    namespace: default
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: self-healer-operator
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: self-healer-operator
+  template:
+    metadata:
+      labels:
+        app: self-healer-operator
+    spec:
+      serviceAccountName: self-healer
+      containers:
+        - name: operator
+          image: self-healer-operator:latest
+          imagePullPolicy: Never
+          env:
+            - name: PROMETHEUS_URL
+              value: "http://prometheus-kube-prometheus-prometheus.monitoring.svc.cluster.local:9090"
+            - name: ML_API_URL
+              value: "http://ml-api-service.default.svc.cluster.local:8000"
