@@ -1,0 +1,37 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ml-api
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ml-api
+  template:
+    metadata:
+      labels:
+        app: ml-api
+    spec:
+      containers:
+        - name: ml-api
+          image: ml-api:latest
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 8000
+          env:
+            - name: MODEL_PATH
+              value: "isolation_forest.joblib"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ml-api-service
+  namespace: default
+spec:
+  selector:
+    app: ml-api
+  ports:
+    - protocol: TCP
+      port: 8000
+      targetPort: 8000
