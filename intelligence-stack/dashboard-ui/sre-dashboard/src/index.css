@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Syne:wght@400;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Syne:wght@400;600;700;800&display=swap');
 @import "tailwindcss";
 
 @theme {
@@ -16,15 +16,165 @@
   --color-sre-purple: #7c4dff;
 }
 
+/* ═══════════════════════════════════════════════════════════
+   Base Styles
+   ═══════════════════════════════════════════════════════════ */
+
 body {
   margin: 0;
   background-color: var(--color-sre-bg);
   color: #e2e8f0;
   font-family: var(--font-mono);
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-/* Custom Scrollbar for Action Logs */
-::-webkit-scrollbar { width: 6px; }
+/* ═══════════════════════════════════════════════════════════
+   Custom Scrollbar
+   ═══════════════════════════════════════════════════════════ */
+
+::-webkit-scrollbar { width: 5px; }
 ::-webkit-scrollbar-track { background: var(--color-sre-bg); }
-::-webkit-scrollbar-thumb { background: var(--color-sre-border); border-radius: 4px; }
+::-webkit-scrollbar-thumb { 
+  background: var(--color-sre-border); 
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover { 
+  background: #2d4163;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   Iframe Visual States & Animations
+   ═══════════════════════════════════════════════════════════ */
+
+/* Nominal state — healthy green subtle glow */
+.iframe-nominal {
+  box-shadow: inset 0 0 1px rgba(0, 230, 118, 0.2);
+  transition: all 0.5s ease;
+}
+
+/* Injecting chaos — amber flash */
+.iframe-injecting {
+  box-shadow: 
+    inset 0 0 80px rgba(255, 171, 0, 0.08),
+    0 0 30px rgba(255, 171, 0, 0.1);
+  animation: injectFlash 0.5s ease 3;
+  transition: all 0.3s ease;
+}
+
+/* Degraded — red pulsing danger */
+.iframe-degraded {
+  box-shadow: 
+    inset 0 0 120px rgba(255, 61, 90, 0.12),
+    0 0 40px rgba(255, 61, 90, 0.15);
+  animation: degradePulse 2s ease-in-out infinite;
+}
+
+/* Healing — purple glow with sweep */
+.iframe-healing {
+  box-shadow: 
+    inset 0 0 80px rgba(124, 77, 255, 0.1),
+    0 0 30px rgba(124, 77, 255, 0.1);
+  animation: healGlow 1.5s ease-in-out infinite;
+}
+
+/* Recovered — green success flash */
+.iframe-recovered {
+  box-shadow: 
+    inset 0 0 60px rgba(0, 230, 118, 0.1),
+    0 0 40px rgba(0, 230, 118, 0.15);
+  animation: recoverFlash 1s ease;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   Keyframes
+   ═══════════════════════════════════════════════════════════ */
+
+@keyframes injectFlash {
+  0%, 100% { border-color: transparent; }
+  50% { border-color: rgba(255, 171, 0, 0.5); }
+}
+
+@keyframes degradePulse {
+  0%, 100% { 
+    box-shadow: 
+      inset 0 0 120px rgba(255, 61, 90, 0.08),
+      0 0 20px rgba(255, 61, 90, 0.1);
+  }
+  50% { 
+    box-shadow: 
+      inset 0 0 120px rgba(255, 61, 90, 0.15),
+      0 0 50px rgba(255, 61, 90, 0.2);
+  }
+}
+
+@keyframes healGlow {
+  0%, 100% { 
+    box-shadow: 
+      inset 0 0 60px rgba(124, 77, 255, 0.05),
+      0 0 20px rgba(124, 77, 255, 0.05);
+  }
+  50% { 
+    box-shadow: 
+      inset 0 0 100px rgba(124, 77, 255, 0.12),
+      0 0 40px rgba(124, 77, 255, 0.15);
+  }
+}
+
+@keyframes recoverFlash {
+  0% { 
+    box-shadow: 0 0 0px rgba(0, 230, 118, 0);
+  }
+  30% { 
+    box-shadow: 
+      inset 0 0 80px rgba(0, 230, 118, 0.2),
+      0 0 60px rgba(0, 230, 118, 0.3);
+  }
+  100% { 
+    box-shadow: 
+      inset 0 0 40px rgba(0, 230, 118, 0.05),
+      0 0 20px rgba(0, 230, 118, 0.1);
+  }
+}
+
+@keyframes healBar {
+  0% { width: 0%; }
+  100% { width: 100%; }
+}
+
+@keyframes scanlines {
+  0% { transform: translateY(0); }
+  100% { transform: translateY(4px); }
+}
+
+@keyframes fadeOut {
+  0% { opacity: 1; }
+  70% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+@keyframes glitch {
+  0% { transform: translate(0); }
+  20% { transform: translate(-2px, 2px); }
+  40% { transform: translate(-2px, -2px); }
+  60% { transform: translate(2px, 2px); }
+  80% { transform: translate(2px, -2px); }
+  100% { transform: translate(0); }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   Card hover effects
+   ═══════════════════════════════════════════════════════════ */
+
+.bg-\[\#0d1421\] {
+  transition: box-shadow 0.3s ease;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   Selection color
+   ═══════════════════════════════════════════════════════════ */
+
+::selection {
+  background: rgba(0, 229, 255, 0.2);
+  color: #e2e8f0;
+}
