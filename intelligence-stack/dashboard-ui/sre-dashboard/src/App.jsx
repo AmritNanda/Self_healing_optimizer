@@ -11,7 +11,7 @@ import {
   MemoryStick, Siren, CheckCircle2, XCircle, Loader2
 } from 'lucide-react';
 
-const API_BASE_URL = 'http://localhost:8080/api/v1';
+const API_BASE_URL = 'http://localhost:8081/api/v1';
 const REFRESH_INTERVAL_MS = 2000;
 const BOUTIQUE_URL = 'http://localhost:8888';
 

@@ -7,7 +7,7 @@ import kubernetes
 import httpx
 
 PROMETHEUS_URL = os.getenv("PROMETHEUS_URL", "http://prometheus-kube-prometheus-prometheus.monitoring.svc.cluster.local:9090")
-ML_API_URL = os.getenv("ML_API_URL", "http://ml-api-service.default.svc.cluster.local:8000")
+ML_API_URL = os.getenv("ML_API_URL", "http://ml-api-service.online-boutique.svc.cluster.local:8000")
 
 # Sharding config for horizontally scaling the operator
 SHARD_ID = int(os.getenv("SHARD_ID", "0"))
@@ -185,7 +185,7 @@ async def analyze_and_heal_pod(name: str, namespace: str, trigger_source: str = 
 # ---------------------------------------------------------------------------
 @kopf.on.field("pods", field="status.phase")
 async def pod_phase_changed(old, new, name, namespace, **kwargs):
-    if namespace not in ["applications"] or not is_pod_in_shard(name):
+    if namespace not in ["online-boutique"] or not is_pod_in_shard(name):
         return
 
     if new in ["Failed", "Unknown"]:
@@ -197,7 +197,7 @@ async def pod_phase_changed(old, new, name, namespace, **kwargs):
 # ---------------------------------------------------------------------------
 @kopf.on.field("pods", field="status.containerStatuses")
 async def container_status_changed(old, new, name, namespace, **kwargs):
-    if namespace not in ["applications"] or not is_pod_in_shard(name):
+    if namespace not in ["online-boutique"] or not is_pod_in_shard(name):
         return
 
     if not new or name in HEALING_LOCKS:
@@ -224,7 +224,7 @@ async def container_status_changed(old, new, name, namespace, **kwargs):
 # ---------------------------------------------------------------------------
 # Timer: Cluster-Wide Batch Proactive Metric Scan (Every 15s)
 # ---------------------------------------------------------------------------
-@kopf.on.timer(interval=15.0)
+@kopf.on.timer("pods", interval=15.0)
 async def batch_proactive_metric_scan(**kwargs):
     """
     Scans ALL running pods in parallel using asyncio.gather.
@@ -236,7 +236,7 @@ async def batch_proactive_metric_scan(**kwargs):
     try:
         # List all pods in the target namespace
         # In a real production system, use labels like 'monitored=true'
-        ret = v1.list_namespaced_pod(namespace="applications")
+        ret = v1.list_namespaced_pod(namespace="online-boutique")
         active_pods = [p.metadata.name for p in ret.items if p.status.phase == "Running"]
 
         # Filter for pods assigned to this shard
@@ -252,7 +252,7 @@ async def batch_proactive_metric_scan(**kwargs):
                     len(pods_to_scan), len(sharded_pods))
 
         # Parallel Execution: asyncio.gather treats each pod analysis as a concurrent task
-        tasks = [analyze_and_heal_pod(p, "applications", trigger_source="BatchTimer") for p in pods_to_scan]
+        tasks = [analyze_and_heal_pod(p, "online-boutique", trigger_source="BatchTimer") for p in pods_to_scan]
         await asyncio.gather(*tasks)
 
     except Exception as e:

@@ -1,0 +1,27 @@
+﻿NAME                                    READY   STATUS              RESTARTS      AGE
+adservice-64dd5464b8-r8grz              0/1     ContainerCreating   0             1s
+adservice-64dd5464b8-x7r9d              0/1     Terminating         0             7s
+cartservice-7956c8c845-gll64            0/1     ContainerCreating   0             1s
+cartservice-7956c8c845-gwdqc            0/1     Terminating         0             7s
+cartservice-7956c8c845-pqw6p            0/1     Completed           0             13s
+checkoutservice-dcf4c5c7b-xn22t         0/1     Running             0             6s
+currencyservice-8fdf6cf9d-5g7gv         0/1     ContainerCreating   0             1s
+currencyservice-8fdf6cf9d-krqbn         0/1     Terminating         0             6s
+currencyservice-8fdf6cf9d-nsrs9         1/1     Terminating         0             15s
+emailservice-588bb96b8-g7bbs            0/1     ContainerCreating   0             1s
+emailservice-588bb96b8-gvl8b            0/1     Terminating         0             15s
+emailservice-588bb96b8-pmldl            0/1     Terminating         0             8s
+frontend-759775d795-2c7bk               0/1     Running             0             5s
+ml-api-6c64876f5d-fv5qv                 1/1     Running             2 (54m ago)   132m
+paymentservice-66c65775b-8qt7l          0/1     ContainerCreating   0             3s
+paymentservice-66c65775b-dhw44          1/1     Terminating         0             17s
+paymentservice-66c65775b-hw52t          1/1     Terminating         0             8s
+productcatalogservice-c4cfd98fb-gbp25   1/1     Running             0             3s
+productcatalogservice-c4cfd98fb-pc66t   1/1     Terminating         0             11s
+recommendationservice-b5b5bfc56-c58vb   0/1     Terminating         0             17s
+recommendationservice-b5b5bfc56-rsgk8   0/1     ContainerCreating   0             2s
+recommendationservice-b5b5bfc56-wp2d7   0/1     Terminating         0             9s
+redis-cart-6b56d55564-xzv9h             1/1     Terminating         0             9s
+redis-cart-6b56d55564-z29xm             0/1     ContainerCreating   0             3s
+shippingservice-5dcc4d7bd-b5zk2         1/1     Terminating         0             10s
+shippingservice-5dcc4d7bd-sp9l4         0/1     ContainerCreating   0             3s

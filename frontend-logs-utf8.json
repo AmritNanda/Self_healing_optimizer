@@ -1,0 +1,6 @@
+﻿{"message":"Tracing disabled.","severity":"info","timestamp":"2026-03-28T19:33:01.936071995Z"}
+{"message":"Profiling disabled.","severity":"info","timestamp":"2026-03-28T19:33:01.936210451Z"}
+{"message":"starting server on :8080","severity":"info","timestamp":"2026-03-28T19:33:01.936811791Z"}
+{"message":"Failed to fetch the name of the cluster in which the pod is runningGet \"http://169.254.169.254/computeMetadata/v1/instance/attributes/cluster-name\": dial tcp 169.254.169.254:80: connect: connection refused","severity":"error","timestamp":"2026-03-28T19:33:04.243469435Z"}
+{"message":"Failed to fetch the Zone of the node where the pod is scheduledGet \"http://169.254.169.254/computeMetadata/v1/instance/zone\": dial tcp 169.254.169.254:80: connect: connection refused","severity":"error","timestamp":"2026-03-28T19:33:05.345490365Z"}
+{"cluster":"","hostname":"frontend-759775d795-4kpkn","message":"Loaded deployment details","severity":"debug","timestamp":"2026-03-28T19:33:05.346893987Z","zone":""}

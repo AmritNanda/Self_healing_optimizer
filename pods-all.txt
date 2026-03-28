@@ -1,0 +1,46 @@
+﻿NAMESPACE         NAME                                                     READY   STATUS              RESTARTS      AGE
+chaos-testing     chaos-controller-manager-6bf59f5b89-6vm2k                1/1     Running             0             35m
+chaos-testing     chaos-controller-manager-6bf59f5b89-k4hp5                1/1     Running             0             35m
+chaos-testing     chaos-controller-manager-6bf59f5b89-vb72k                1/1     Running             0             35m
+chaos-testing     chaos-daemon-zhmm8                                       1/1     Running             0             35m
+chaos-testing     chaos-dashboard-5b77585c6c-cktz9                         1/1     Running             0             35m
+chaos-testing     chaos-dns-server-6bccb5bb76-6x4h4                        1/1     Running             0             35m
+default           self-healer-operator-7c4b74bcf5-tvt8c                    1/1     Running             0             6m29s
+kube-system       coredns-7d764666f9-lzgmp                                 1/1     Running             3 (55m ago)   3h46m
+kube-system       etcd-minikube                                            1/1     Running             3 (55m ago)   3h46m
+kube-system       kube-apiserver-minikube                                  1/1     Running             3 (55m ago)   3h46m
+kube-system       kube-controller-manager-minikube                         1/1     Running             3 (55m ago)   3h46m
+kube-system       kube-proxy-twz64                                         1/1     Running             3 (55m ago)   3h46m
+kube-system       kube-scheduler-minikube                                  1/1     Running             3 (55m ago)   3h46m
+kube-system       storage-provisioner                                      1/1     Running             5 (55m ago)   3h46m
+monitoring        alertmanager-prometheus-kube-prometheus-alertmanager-0   2/2     Running             6 (55m ago)   3h
+monitoring        prometheus-grafana-d89dbbcb8-kbmx8                       3/3     Running             9 (55m ago)   3h2m
+monitoring        prometheus-kube-prometheus-operator-6cf4948ffd-9hwwh     1/1     Running             4 (55m ago)   3h2m
+monitoring        prometheus-kube-state-metrics-d585bd88d-z9sdj            1/1     Running             3 (55m ago)   3h2m
+monitoring        prometheus-prometheus-kube-prometheus-prometheus-0       2/2     Running             6 (55m ago)   3h
+monitoring        prometheus-prometheus-node-exporter-n5jkw                1/1     Running             3 (55m ago)   3h2m
+online-boutique   adservice-64dd5464b8-hqgkk                               0/1     Terminating         0             8s
+online-boutique   adservice-64dd5464b8-vvx66                               0/1     ContainerCreating   0             1s
+online-boutique   cartservice-7956c8c845-gdl2l                             0/1     ContainerCreating   0             4s
+online-boutique   cartservice-7956c8c845-x7rz7                             0/1     Completed           0             12s
+online-boutique   checkoutservice-dcf4c5c7b-8mwfh                          1/1     Running             0             9s
+online-boutique   currencyservice-8fdf6cf9d-nqbrp                          1/1     Terminating         0             9s
+online-boutique   currencyservice-8fdf6cf9d-sgkb5                          1/1     Terminating         0             15s
+online-boutique   currencyservice-8fdf6cf9d-xqm8f                          0/1     ContainerCreating   0             2s
+online-boutique   emailservice-588bb96b8-blmjm                             0/1     Error               0             17s
+online-boutique   emailservice-588bb96b8-k7857                             0/1     Running             0             6s
+online-boutique   emailservice-588bb96b8-kzcxs                             0/1     Terminating         0             12s
+online-boutique   frontend-759775d795-95mgx                                0/1     Error               0             12s
+online-boutique   frontend-759775d795-c8lnt                                0/1     Terminating         0             8s
+online-boutique   frontend-759775d795-g8gxm                                0/1     ContainerCreating   0             0s
+online-boutique   ml-api-6c64876f5d-fv5qv                                  1/1     Running             2 (55m ago)   133m
+online-boutique   paymentservice-66c65775b-7c5mc                           0/1     ContainerCreating   0             3s
+online-boutique   paymentservice-66c65775b-ls9r4                           0/1     Error               0             17s
+online-boutique   paymentservice-66c65775b-zr4ct                           1/1     Terminating         0             12s
+online-boutique   productcatalogservice-c4cfd98fb-zzp7w                    1/1     Running             0             9s
+online-boutique   recommendationservice-b5b5bfc56-brl4c                    0/1     Terminating         0             12s
+online-boutique   recommendationservice-b5b5bfc56-dl89p                    0/1     Running             0             7s
+online-boutique   redis-cart-6b56d55564-295hj                              0/1     ContainerCreating   0             2s
+online-boutique   redis-cart-6b56d55564-9hpx6                              1/1     Terminating         0             12s
+online-boutique   shippingservice-5dcc4d7bd-rmhnn                          1/1     Terminating         0             9s
+online-boutique   shippingservice-5dcc4d7bd-wzg74                          0/1     ContainerCreating   0             2s

@@ -25,12 +25,12 @@ logger = logging.getLogger("chaos.api")
 PROMETHEUS_URL = os.getenv("PROMETHEUS_URL", "http://localhost:9090")
 ML_BACKEND_URL = os.getenv("ML_BACKEND_URL", "http://localhost:8000")
 
-CHAOS_DIR = os.getenv("CHAOS_DIR", r"E:\Self-healing-system\k8s-infrastructure\chaos-scenarios")
+CHAOS_DIR = os.getenv("CHAOS_DIR", r"d:\trasnfer\codes\Self_healing_optimizer\k8s-infrastructure\chaos-scenarios")
 CHAOS_FILES = {
     "pod_kill":      os.path.join(CHAOS_DIR, "pod-kill.yaml"),
     "cpu_stress":    os.path.join(CHAOS_DIR, "cpu-stress.yaml"),
     "memory_stress": os.path.join(CHAOS_DIR, "memory-stress.yaml"),
-    "network_delay": os.path.join(CHAOS_DIR, "network-delay.yaml"),
+    "network_delay": os.path.join(CHAOS_DIR, "network-partition.yaml"),
     "network_loss":  os.path.join(CHAOS_DIR, "http-abort.yaml"),
 }
 
@@ -95,8 +95,8 @@ def health():
 @app.get("/api/v1/telemetry", response_model=TelemetryResponse)
 async def get_telemetry():
     try:
-        cpu_query = 'sum(rate(container_cpu_usage_seconds_total{namespace="applications",container!="",container!="POD"}[2m]))'
-        mem_query = 'sum(container_memory_working_set_bytes{namespace="applications",container!="",container!="POD"})'
+        cpu_query = 'sum(rate(container_cpu_usage_seconds_total{namespace="online-boutique",container!="",container!="POD"}[2m]))'
+        mem_query = 'sum(container_memory_working_set_bytes{namespace="online-boutique",container!="",container!="POD"})'
 
         cpu_data, mem_data = await asyncio.gather(
             query_prometheus(cpu_query),
@@ -150,7 +150,7 @@ async def frontend_down():
     try:
         result = subprocess.run(
             ["kubectl", "scale", "deployment", "frontend",
-             "-n", "applications", "--replicas=0"],
+             "-n", "online-boutique", "--replicas=0"],
             capture_output=True, text=True, timeout=15
         )
         if result.returncode != 0:
@@ -168,7 +168,7 @@ async def frontend_up():
     try:
         result = subprocess.run(
             ["kubectl", "scale", "deployment", "frontend",
-             "-n", "applications", "--replicas=1"],
+             "-n", "online-boutique", "--replicas=1"],
             capture_output=True, text=True, timeout=15
         )
         if result.returncode != 0:
@@ -204,4 +204,4 @@ async def analyze_telemetry(payload: MLAnalysisRequest):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8080)
+    uvicorn.run(app, host="0.0.0.0", port=8081)
