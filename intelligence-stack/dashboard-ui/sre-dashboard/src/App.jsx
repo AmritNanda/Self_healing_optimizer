@@ -3,7 +3,7 @@ import axios from 'axios';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
 import { Activity, Cpu, HardDrive, AlertOctagon, ShieldAlert, Zap, ServerCrash, PowerOff, Network } from 'lucide-react';
 
-const ML_BACKEND_URL = 'http://localhost:8000/api/v1/analyze';
+const API_BASE_URL = 'http://localhost:8080/api/v1';
 const REFRESH_INTERVAL_MS = 2000;
 
 export default function App() {
@@ -22,47 +22,56 @@ export default function App() {
   useEffect(() => {
     const fetchMetrics = async () => {
       try {
-        // Generate baseline telemetry (simulating what your backend/Prometheus would do)
-        const t = Date.now() / 1000;
-        const mockCpu = Math.max(5, Math.min(99, 30 + 15 * Math.abs(0.5 - ((t % 60) / 60)) + (Math.random() * 8 - 4)));
-        const mockMem = Math.max(10, Math.min(99, 50 + 10 * Math.abs(0.5 - ((t % 90) / 90)) + (Math.random() * 10 - 5)));
-        const mockLat = Math.max(20, 100 + 80 * Math.abs(0.5 - ((t % 45) / 45)) + (Math.random() * 40 - 20));
+        // 1. Fetch REAL telemetry from your new API_BASE_URL
+        const telResponse = await axios.get(`${API_BASE_URL}/telemetry`);
+        const { cpu, mem, latency } = telResponse.data;
 
-        // Call your ACTUAL FastAPI backend
-        const response = await axios.post(ML_BACKEND_URL, {
-          cpu_usage: mockCpu, mem_usage: mockMem, latency_ms: mockLat
-        }).catch(() => ({ 
-          // Fallback if backend is not running yet
-          data: { threat_score: (mockCpu + mockMem) / 200, is_anomaly: mockCpu > 80, recommended_action: mockCpu > 80 ? 'RESTART_POD' : 'NO_ACTION' }
-        }));
+        // 2. Call ML Analysis bridge
+        const analysisResponse = await axios.post(`${API_BASE_URL}/analyze`, {
+          cpu_usage: cpu, 
+          mem_usage: mem, 
+          latency_ms: latency
+        });
 
-        const data = response.data;
+        const data = analysisResponse.data;
         const nowStr = new Date().toLocaleTimeString('en-US', { hour12: false });
         
         setCurrent({
-          cpu: mockCpu, mem: mockMem, lat: mockLat,
-          threat: data.threat_score, is_anomaly: data.is_anomaly, action: data.recommended_action
+          cpu: cpu, 
+          mem: mem, 
+          lat: latency,
+          threat: data.threat_score, 
+          is_anomaly: data.is_anomaly, 
+          action: data.recommended_action
         });
 
-        // Append to Charts
+        // Update Charts
         setHistory(prev => {
-          const newPoint = { time: nowStr, cpu: mockCpu, mem: mockMem, lat: mockLat, threat: data.threat_score * 100 };
-          return [...prev, newPoint].slice(-60); // Keep last 60 points (2 mins at 2s interval)
+          const newPoint = { 
+            time: nowStr, 
+            cpu: Number(cpu.toFixed(1)), 
+            mem: Number(mem.toFixed(1)), 
+            lat: Number(latency.toFixed(0)), 
+            threat: Number((data.threat_score * 100).toFixed(1)) 
+          };
+          const updated = [...prev, newPoint];
+          return updated.length > 60 ? updated.slice(-60) : updated;
         });
 
-        // Handle Anomalies
+        // Handle Anomaly Stats
         if (data.is_anomaly) {
           setStats(s => ({ ...s, anomalies: s.anomalies + 1 }));
           addLog(`🚨 ANOMALY DETECTED — Score: ${data.threat_score.toFixed(3)} | Action: ${data.recommended_action}`, 'crit');
           
-          if (data.recommended_action !== 'NO_ACTION') {
+          if (data.recommended_action !== 'NO_ACTION' && data.recommended_action !== 'NO_ACTION') {
              setStats(s => ({ ...s, recoveries: s.recoveries + 1 }));
              addLog(`✅ Executing Recovery: ${data.recommended_action}`, 'ok');
           }
         }
 
       } catch (error) {
-        console.error("Telemetry loop error:", error);
+        console.error("Dashboard error:", error);
+        addLog("⚠️ API Connectivity Lost. Check backend status.", "warn");
       }
     };
 
@@ -80,9 +89,14 @@ export default function App() {
     setLogs(prev => [{ time, msg, color: colors[level] || 'text-slate-300' }, ...prev].slice(0, 100));
   };
 
-  const triggerChaos = (type) => {
-    addLog(`☢️ CHAOS INJECTED → ${type.toUpperCase()}`, 'crit');
-    // You can wire this up to an axios call to your FastAPI endpoint later
+  const triggerChaos = async (type) => {
+    addLog(`☢️ INJECTING CHAOS: ${type.toUpperCase()}...`, 'warn');
+    try {
+      await axios.post(`${API_BASE_URL}/chaos`, { type: type });
+      addLog(`🔥 CHAOS DEPLOYED: ${type.toUpperCase()}`, 'crit');
+    } catch (e) {
+      addLog(`❌ FAILED to inject chaos: ${e.message}`, 'crit');
+    }
   };
 
   return (
