@@ -80,7 +80,7 @@ def train() -> None:
             max_samples="auto",
             contamination=N_ANOMALY / (N_NORMAL + N_ANOMALY),
             random_state=RANDOM_SEED,
-            n_jobs=-1,
+            n_jobs=1,
         )),
     ])
 
