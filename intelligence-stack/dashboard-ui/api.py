@@ -16,6 +16,9 @@ from fastapi.middleware.cors import CORSMiddleware
 import httpx
 from pydantic import BaseModel
 
+from cascade import CascadeEngine
+from blast_radius import BlastRadiusRenderer
+
 # ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
@@ -200,6 +203,111 @@ async def analyze_telemetry(payload: MLAnalysisRequest):
                 "recommended_action": "RESTART_POD" if score > 0.6 else "NO_ACTION",
                 "processing_time_ms": 0.0
             }
+
+
+# ---------------------------------------------------------------------------
+# Blast Radius / Cascade Engine
+# ---------------------------------------------------------------------------
+cascade_engine = CascadeEngine()
+blast_renderer = BlastRadiusRenderer()
+
+
+async def _cascade_sync_loop():
+    """Background task: sync cascade engine from live cluster every 3s."""
+    while True:
+        try:
+            events = await cascade_engine.sync_from_cluster()
+            if events:
+                logger.info("Cascade sync: %d state change(s)", len(events))
+        except Exception as e:
+            logger.warning("Cascade sync error: %s", e)
+        await asyncio.sleep(3)
+
+
+@app.on_event("startup")
+async def _start_cascade_sync():
+    asyncio.create_task(_cascade_sync_loop())
+    logger.info("Cascade background sync started")
+
+
+@app.get("/api/v1/blast-radius")
+async def get_blast_radius():
+    """Return the full blast radius map as JSON for the React frontend."""
+    try:
+        blast_map = cascade_engine.get_blast_radius_map()
+        legend_table = blast_renderer.build_legend_table(blast_map)
+
+        # Serialize states for the frontend
+        states = {}
+        for svc, state in blast_map.states.items():
+            s = {
+                "name": state.name,
+                "display_name": state.display_name,
+                "health": state.health.value,
+                "health_score": round(state.health_score, 1),
+                "failure_reason": state.failure_reason or "",
+                "affected_by": state.affected_by,
+                "recovery_eta_s": state.recovery_eta_s,
+                "position": list(state.position),
+                "color": state.color,
+            }
+            if state.metrics:
+                m = state.metrics
+                s["metrics"] = {
+                    "cpu_percent": round(m.cpu_percent, 1),
+                    "memory_mb": round(m.memory_mb, 1),
+                    "restart_count": m.restart_count,
+                    "replicas_available": m.replicas_available,
+                    "replicas_desired": m.replicas_desired,
+                    "pod_ready": m.pod_ready,
+                    "pod_phase": m.pod_phase,
+                }
+            states[svc] = s
+
+        # Serialize events
+        events = []
+        for ev in blast_map.events[-20:]:
+            events.append({
+                "timestamp": ev.timestamp,
+                "service": ev.service,
+                "previous": ev.previous.value,
+                "current": ev.current.value,
+                "health_score": round(ev.health_score, 1),
+                "triggered_by": ev.triggered_by,
+                "depth": ev.depth,
+            })
+
+        return {
+            "root_cause": blast_map.root_cause,
+            "affected_count": blast_map.affected_count,
+            "total_services": blast_map.total_services,
+            "estimated_user_impact_pct": round(blast_map.estimated_user_impact_pct, 1),
+            "propagation_path": blast_map.propagation_path,
+            "states": states,
+            "events": events,
+            "legend_table": legend_table,
+        }
+    except Exception as e:
+        logger.error("Blast radius error: %s", e)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/v1/blast-radius/inject")
+async def inject_blast_root(payload: ChaosRequest):
+    """Mark a service as the chaos root for blast radius tracking."""
+    svc = payload.type
+    from cascade import DEPENDENCY_GRAPH
+    if svc not in DEPENDENCY_GRAPH:
+        raise HTTPException(status_code=400, detail=f"Unknown service: {svc}")
+    cascade_engine.inject(svc)
+    return {"status": "ok", "root": svc}
+
+
+@app.post("/api/v1/blast-radius/reset")
+async def reset_blast_radius():
+    """Reset all services to healthy state."""
+    cascade_engine.reset()
+    return {"status": "ok", "message": "Cascade engine reset"}
 
 
 if __name__ == "__main__":
